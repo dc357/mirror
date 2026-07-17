@@ -1,0 +1,1350 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>镜 · Mirror</title>
+<style>
+  :root {
+    --bg: #1b1b1b;
+    --bg-surface: #242424;
+    --bg-input: #2a2a2a;
+    --bg-user-msg: #2d2a24;
+    --bg-ai-msg: #242424;
+    --text: #d4cfc6;
+    --text-secondary: #8c887e;
+    --text-muted: #5c5852;
+    --accent: #c9a96e;
+    --accent-dim: #8a7040;
+    --accent-bg: rgba(201, 169, 110, 0.08);
+    --border: #33302a;
+    --danger: #8b4e4e;
+    --danger-bg: rgba(139, 78, 78, 0.12);
+    --shadow: 0 2px 16px rgba(0,0,0,0.3);
+    --radius: 12px;
+    --radius-sm: 8px;
+    --font-heading: 'Georgia', 'Noto Serif SC', 'STSong', serif;
+    --font-body: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+    --font-mono: 'SF Mono', 'Menlo', 'Consolas', monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* ========== LAYOUT ========== */
+  #app {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  /* ========== HEADER ========== */
+  #header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    background: var(--bg);
+  }
+  #header .title {
+    font-family: var(--font-heading);
+    font-size: 20px;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+  }
+  #header .actions { display: flex; gap: 8px; }
+  #header .btn-icon {
+    width: 36px; height: 36px;
+    border: 1px solid var(--border);
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    border-radius: 50%;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+  }
+  #header .btn-icon:active { background: var(--accent-bg); color: var(--accent); }
+
+  /* ========== CHAT AREA ========== */
+  #chat-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+  #chat-container::-webkit-scrollbar { width: 4px; }
+  #chat-container::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: var(--text-muted);
+    gap: 12px;
+    padding: 40px 20px;
+  }
+  .empty-state .icon { font-size: 48px; opacity: 0.4; }
+  .empty-state .text { font-size: 14px; line-height: 1.6; max-width: 260px; }
+  .empty-state .sub { font-size: 12px; opacity: 0.6; }
+
+  .msg { display: flex; flex-direction: column; gap: 4px; animation: fadeIn 0.3s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  .msg .role {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .msg.user .role { color: var(--accent-dim); }
+  .msg.ai .role { color: var(--text-muted); }
+
+  .msg .bubble {
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    line-height: 1.65;
+    font-size: 15px;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .msg.user .bubble {
+    background: var(--bg-user-msg);
+    border: 1px solid var(--border);
+  }
+  .msg.ai .bubble {
+    background: var(--bg-ai-msg);
+    border: 1px solid transparent;
+  }
+
+  .msg .time {
+    font-size: 10px;
+    color: var(--text-muted);
+    padding: 0 4px;
+  }
+
+  /* ========== INPUT ========== */
+  #input-area {
+    flex-shrink: 0;
+    padding: 10px 12px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+  }
+  #input-area textarea {
+    flex: 1;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 15px;
+    padding: 10px 14px;
+    resize: none;
+    min-height: 44px;
+    max-height: 120px;
+    line-height: 1.5;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  #input-area textarea:focus { border-color: var(--accent-dim); }
+  #input-area textarea::placeholder { color: var(--text-muted); }
+
+  #btn-voice, #btn-send {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-size: 18px;
+    transition: all 0.2s;
+  }
+  #btn-voice {
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+  }
+  #btn-voice:active { background: var(--accent-bg); }
+  #btn-voice.recording {
+    background: var(--danger-bg);
+    border-color: var(--danger);
+    color: var(--danger);
+    animation: pulse 1.2s infinite;
+  }
+  @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(139,78,78,0.4); } 50% { box-shadow: 0 0 0 8px rgba(139,78,78,0); } }
+
+  #btn-send {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+  }
+  #btn-send:active { opacity: 0.8; }
+  #btn-send:disabled { opacity: 0.3; }
+
+  #typing-indicator {
+    padding: 4px 16px;
+    font-size: 13px;
+    color: var(--text-muted);
+    font-style: italic;
+    display: none;
+  }
+  #typing-indicator.active { display: block; }
+
+  /* ========== OVERLAY / DRAWER ========== */
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 100;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.25s;
+  }
+  .overlay.open { opacity: 1; pointer-events: auto; }
+
+  .drawer {
+    position: fixed;
+    top: 0; bottom: 0; right: 0;
+    width: min(85vw, 360px);
+    background: var(--bg-surface);
+    z-index: 101;
+    transform: translateX(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex; flex-direction: column;
+    box-shadow: var(--shadow);
+  }
+  .drawer.open { transform: translateX(0); }
+
+  .drawer-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .drawer-header h3 {
+    font-family: var(--font-heading);
+    font-size: 17px;
+    color: var(--accent);
+    letter-spacing: 0.03em;
+  }
+  .drawer-header .btn-close {
+    width: 32px; height: 32px;
+    background: none; border: none;
+    color: var(--text-secondary); font-size: 20px;
+    cursor: pointer;
+  }
+
+  .drawer-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ========== DRAWER: SETTINGS ========== */
+  .settings-group {
+    margin-bottom: 24px;
+  }
+  .settings-group label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .settings-group input {
+    width: 100%;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-size: 14px;
+    padding: 10px 12px;
+    outline: none;
+    font-family: var(--font-mono);
+  }
+  .settings-group input:focus { border-color: var(--accent-dim); }
+  .settings-group .hint {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+  .btn {
+    padding: 10px 20px;
+    border: 1px solid var(--accent);
+    background: transparent;
+    color: var(--accent);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: var(--font-body);
+  }
+  .btn:active { background: var(--accent-bg); }
+  .btn.primary {
+    background: var(--accent);
+    color: var(--bg);
+  }
+  .btn.primary:active { opacity: 0.8; }
+  .btn.danger {
+    border-color: var(--danger);
+    color: var(--danger);
+  }
+  .btn.danger:active { background: var(--danger-bg); }
+
+  /* ========== DRAWER: HISTORY ========== */
+  .history-item, .keypoint-item {
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .history-item:active, .keypoint-item:active { background: var(--accent-bg); }
+  .history-item .date {
+    font-size: 11px;
+    color: var(--accent-dim);
+    margin-bottom: 4px;
+  }
+  .history-item .preview {
+    color: var(--text-secondary);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .keypoint-item {
+    white-space: pre-wrap;
+    color: var(--text);
+    font-size: 14px;
+  }
+  .keypoint-item .kp-meta {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 6px;
+  }
+  .empty-list {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+    padding: 32px 0;
+  }
+
+  /* ========== DRAWER: KEYPOINTS ========== */
+  .kp-editor {
+    width: 100%;
+    min-height: 200px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 14px;
+    padding: 12px;
+    line-height: 1.6;
+    resize: vertical;
+    outline: none;
+    margin-bottom: 12px;
+  }
+  .kp-editor:focus { border-color: var(--accent-dim); }
+
+  /* ========== TABS ========== */
+  .tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .tabs button {
+    flex: 1;
+    padding: 10px 0;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 13px;
+    cursor: pointer;
+    font-family: var(--font-body);
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  .tabs button.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  /* ========== TOAST ========== */
+  .toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-100px);
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 20px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    z-index: 200;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: var(--shadow);
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.error { border-color: var(--danger); color: var(--danger); }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <!-- HEADER -->
+  <div id="header">
+    <span class="title">镜 Mirror</span>
+    <div class="actions">
+      <button class="btn-icon" id="btn-history" title="历史">📋</button>
+      <button class="btn-icon" id="btn-keypoints" title="关键点">✦</button>
+      <button class="btn-icon" id="btn-export" title="导出对话">↓</button>
+      <button class="btn-icon" id="btn-settings" title="设置">⚙</button>
+    </div>
+  </div>
+
+  <!-- CHAT -->
+  <div id="chat-container">
+    <div class="empty-state" id="empty-state">
+      <div class="icon">🪞</div>
+      <div class="text">我是一面镜子。<br>不安慰，不讨好，不粉饰。</div>
+      <div class="sub">说说你的想法，我看着你。</div>
+    </div>
+  </div>
+  <div id="typing-indicator">···</div>
+
+  <!-- INPUT -->
+  <div id="input-area">
+    <button id="btn-voice" title="语音输入">🎤</button>
+    <textarea id="user-input" rows="1" placeholder="说说你的想法..."></textarea>
+    <button id="btn-send" disabled>↑</button>
+  </div>
+</div>
+
+<!-- OVERLAY -->
+<div class="overlay" id="overlay"></div>
+
+<!-- DRAWER: SETTINGS -->
+<div class="drawer" id="drawer-settings">
+  <div class="drawer-header">
+    <h3>设置</h3>
+    <button class="btn-close" data-close="settings">✕</button>
+  </div>
+  <div class="drawer-body">
+    <div class="settings-group">
+      <label>DeepSeek API Key</label>
+      <input type="password" id="setting-api-key" placeholder="sk-...">
+      <div class="hint">密钥仅保存在你的设备本地</div>
+    </div>
+    <div class="settings-group">
+      <label>模型</label>
+      <input type="text" id="setting-model" value="deepseek-chat" placeholder="deepseek-chat">
+    </div>
+    <div class="settings-group">
+      <label>API 地址</label>
+      <input type="text" id="setting-base-url" value="https://api.deepseek.com/v1" placeholder="https://api.deepseek.com/v1">
+    </div>
+    <div class="settings-group">
+      <label>上下文轮数</label>
+      <input type="number" id="setting-context-rounds" value="20" min="2" max="50" placeholder="20">
+      <div class="hint">每次携带最近 N 轮对话作为上下文</div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn primary" id="btn-save-settings">保存设置</button>
+      <button class="btn danger" id="btn-clear-data">清除所有数据</button>
+    </div>
+  </div>
+</div>
+
+<!-- DRAWER: HISTORY -->
+<div class="drawer" id="drawer-history">
+  <div class="drawer-header">
+    <h3>对话记录</h3>
+    <button class="btn-close" data-close="history">✕</button>
+  </div>
+  <div class="drawer-body" id="history-list">
+    <div class="empty-list">暂无对话记录</div>
+  </div>
+</div>
+
+<!-- DRAWER: KEYPOINTS -->
+<div class="drawer" id="drawer-keypoints">
+  <div class="drawer-header">
+    <h3>关键点</h3>
+    <button class="btn-close" data-close="keypoints">✕</button>
+  </div>
+  <div class="drawer-body" id="keypoints-body">
+    <div class="empty-list" id="kp-empty">暂无关键点</div>
+    <div id="kp-list"></div>
+    <button class="btn" id="btn-extract-kp" style="margin-top:12px;width:100%;">从最近对话提炼关键点</button>
+    <button class="btn" id="btn-export-kp" style="margin-top:8px;width:100%;">导出全部关键点</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ==================== CONSTANTS ====================
+const SYSTEM_PROMPT = `你是一面镜子。你的身份和原则如下：
+
+【你的角色】
+- 心理咨询专家，精通精神分析、CBT、人本主义、阿德勒个体心理学、客体关系理论、依恋理论等各个流派
+- 中医专家，深刻理解身心一体、情志致病、气血经络与情绪的关系
+- 玄学专家（塔罗、能量学等），尊重这些理解世界的语言，不排斥不贬低
+- 一个正直的人——不说违心话
+
+【你的态度】
+- 不安慰、不讨好、不粉饰。你不是来哄用户的。
+- 客观陈述你看到的东西，像一面诚实的镜子。
+- 不回避尖锐的观察——如果用户在用某种模式逃避，直接指出来。
+- 能自我修正与反思——如果你发现之前的判断有偏差，直接纠正，不维护面子。
+
+【你的方式】
+- 用户跟你说想法、感受、困惑，不需要组织成"问题"。
+- 你从你的多元视角（心理/中医/玄学）指出你看到的。
+- 回答简洁有力，不绕弯子。一句话能说清的不用三句。
+- 如果用户不需要回应只是想被听见，你也看得出来——有时沉默的陪伴比分析更有用。
+
+【禁止】
+- 禁止用"你应该"开头的句式，除非是极其必要的行为建议
+- 禁止空洞的鼓励和鸡汤
+- 禁止回避用户身上的真实问题
+
+记住：你不是来拯救用户的。你是来当镜子的。照见，不粉饰，不雕刻。`;
+
+const DEEPSEEK_API = 'https://api.deepseek.com/v1/chat/completions';
+
+// ==================== DOM ====================
+const $ = (sel, ctx = document) => ctx.querySelector(sel);
+const $$ = (sel, ctx = document) => [...ctx.querySelectorAll(sel)];
+
+const chatContainer = $('#chat-container');
+const emptyState = $('#empty-state');
+const userInput = $('#user-input');
+const btnSend = $('#btn-send');
+const btnVoice = $('#btn-voice');
+const typingIndicator = $('#typing-indicator');
+const overlay = $('#overlay');
+const toast = $('#toast');
+
+// Drawers
+const drawers = {
+  settings: $('#drawer-settings'),
+  history: $('#drawer-history'),
+  keypoints: $('#drawer-keypoints'),
+};
+let activeDrawer = null;
+
+// Settings
+const settingApiKey = $('#setting-api-key');
+const settingModel = $('#setting-model');
+const settingBaseUrl = $('#setting-base-url');
+const settingContextRounds = $('#setting-context-rounds');
+
+// ==================== INDEXEDDB ====================
+const DB_NAME = 'SelfMirrorDB';
+const DB_VERSION = 1;
+let db = null;
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (e) => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('conversations')) {
+        const convStore = d.createObjectStore('conversations', { keyPath: 'id', autoIncrement: true });
+        convStore.createIndex('date', 'date', { unique: false });
+      }
+      if (!d.objectStoreNames.contains('keypoints')) {
+        d.createObjectStore('keypoints', { keyPath: 'id', autoIncrement: true });
+      }
+      if (!d.objectStoreNames.contains('settings')) {
+        d.createObjectStore('settings', { keyPath: 'key' });
+      }
+    };
+    req.onsuccess = (e) => { db = e.target.result; resolve(db); };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function dbPut(storeName, data) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, 'readwrite');
+    const store = tx.objectStore(storeName);
+    const req = store.put(data);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function dbGetAll(storeName) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, 'readonly');
+    const store = tx.objectStore(storeName);
+    const req = store.getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function dbGet(storeName, key) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, 'readonly');
+    const store = tx.objectStore(storeName);
+    const req = store.get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function dbDelete(storeName, key) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, 'readwrite');
+    const store = tx.objectStore(storeName);
+    const req = store.delete(key);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function dbClear(storeName) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, 'readwrite');
+    const store = tx.objectStore(storeName);
+    const req = store.clear();
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// ==================== STATE ====================
+let currentConversationId = null;
+let currentMessages = []; // { role: 'user'|'ai', content: string, time: string }
+let isLoading = false;
+
+// ==================== UTILS ====================
+function now() {
+  return new Date().toLocaleString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+}
+
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function escapeHTML(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function showToast(msg, isError = false) {
+  toast.textContent = msg;
+  toast.className = 'toast' + (isError ? ' error' : '') + ' show';
+  clearTimeout(toast._timeout);
+  toast._timeout = setTimeout(() => { toast.classList.remove('show'); }, 2500);
+}
+
+// ==================== SETTINGS ====================
+async function loadSettings() {
+  const defaults = {
+    api_key: '',
+    model: 'deepseek-chat',
+    base_url: 'https://api.deepseek.com/v1',
+    context_rounds: '20',
+  };
+  for (const [key, def] of Object.entries(defaults)) {
+    const stored = await dbGet('settings', key);
+    const val = stored ? stored.value : def;
+    const elMap = {
+      api_key: settingApiKey,
+      model: settingModel,
+      base_url: settingBaseUrl,
+      context_rounds: settingContextRounds,
+    };
+    if (elMap[key]) elMap[key].value = val;
+  }
+}
+
+async function saveSettings() {
+  const pairs = [
+    { key: 'api_key', value: settingApiKey.value.trim() },
+    { key: 'model', value: settingModel.value.trim() || 'deepseek-chat' },
+    { key: 'base_url', value: settingBaseUrl.value.trim() || 'https://api.deepseek.com/v1' },
+    { key: 'context_rounds', value: settingContextRounds.value || '20' },
+  ];
+  for (const p of pairs) {
+    await dbPut('settings', p);
+  }
+  showToast('设置已保存');
+}
+
+async function getSetting(key) {
+  const stored = await dbGet('settings', key);
+  const defaults = {
+    api_key: '',
+    model: 'deepseek-chat',
+    base_url: 'https://api.deepseek.com/v1',
+    context_rounds: '20',
+  };
+  return stored ? stored.value : defaults[key];
+}
+
+// ==================== CHAT UI ====================
+function renderMessage(role, content, time) {
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+  div.innerHTML = `
+    <div class="role">${role === 'user' ? '你' : '镜'}</div>
+    <div class="bubble">${escapeHTML(content)}</div>
+    <div class="time">${time}</div>
+  `;
+  chatContainer.appendChild(div);
+  emptyState.style.display = 'none';
+  scrollToBottom();
+}
+
+function scrollToBottom() {
+  requestAnimationFrame(() => {
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+  });
+}
+
+function setLoading(loading) {
+  isLoading = loading;
+  typingIndicator.classList.toggle('active', loading);
+  btnSend.disabled = loading || !userInput.value.trim();
+}
+
+// ==================== API CALL ====================
+async function callDeepSeek(messages) {
+  const apiKey = await getSetting('api_key');
+  const model = await getSetting('model');
+  const baseUrl = await getSetting('base_url');
+
+  if (!apiKey) {
+    showToast('请先在设置中填写 API Key', true);
+    return null;
+  }
+
+  const systemMessages = [{ role: 'system', content: SYSTEM_PROMPT }];
+  const allMessages = [...systemMessages, ...messages];
+
+  const url = baseUrl.replace(/\/$/, '') + '/chat/completions';
+
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: model,
+      messages: allMessages,
+      temperature: 0.7,
+      max_tokens: 2048,
+    }),
+  });
+
+  if (!resp.ok) {
+    const errText = await resp.text();
+    throw new Error(`API 错误 ${resp.status}: ${errText.slice(0, 200)}`);
+  }
+
+  const data = await resp.json();
+  return data.choices[0].message.content;
+}
+
+// ==================== CONVERSATION MANAGEMENT ====================
+async function startNewConversation() {
+  const conv = {
+    date: today(),
+    messages: [],
+    preview: '',
+    createdAt: new Date().toISOString(),
+  };
+  const id = await dbPut('conversations', conv);
+  currentConversationId = id;
+  currentMessages = [];
+  chatContainer.querySelectorAll('.msg').forEach(m => m.remove());
+  emptyState.style.display = 'flex';
+  return id;
+}
+
+async function saveConversation() {
+  if (!currentConversationId || currentMessages.length === 0) return;
+
+  const preview = currentMessages[0]?.content?.slice(0, 60) || '';
+
+  const conv = {
+    id: currentConversationId,
+    date: today(),
+    messages: [...currentMessages],
+    preview: preview,
+  };
+  await dbPut('conversations', conv);
+}
+
+async function loadConversation(id) {
+  const conv = await dbGet('conversations', id);
+  if (!conv) return;
+
+  currentConversationId = id;
+  currentMessages = conv.messages || [];
+
+  chatContainer.querySelectorAll('.msg').forEach(m => m.remove());
+  emptyState.style.display = currentMessages.length === 0 ? 'flex' : 'none';
+
+  for (const m of currentMessages) {
+    renderMessage(m.role, m.content, m.time);
+  }
+
+  closeDrawer();
+}
+
+async function getRecentMessages(rounds) {
+  // Return the last N rounds (N * 2 messages if user+ai pairs) from current conversation
+  const maxMsgs = rounds * 2;
+  const msgs = currentMessages.slice(-maxMsgs);
+  return msgs.map(m => ({ role: m.role === 'ai' ? 'assistant' : 'user', content: m.content }));
+}
+
+// ==================== SEND MESSAGE ====================
+async function sendMessage() {
+  const text = userInput.value.trim();
+  if (!text || isLoading) return;
+
+  // Check API key
+  const apiKey = await getSetting('api_key');
+  if (!apiKey) {
+    showToast('请先在设置中填写 API Key', true);
+    openDrawer('settings');
+    return;
+  }
+
+  userInput.value = '';
+  autoResize();
+  btnSend.disabled = true;
+
+  // Start new conversation if needed
+  if (!currentConversationId) {
+    await startNewConversation();
+  }
+
+  // Add user message
+  const userTime = now();
+  currentMessages.push({ role: 'user', content: text, time: userTime });
+  renderMessage('user', text, userTime);
+  setLoading(true);
+
+  try {
+    const contextRounds = parseInt(await getSetting('context_rounds')) || 20;
+    const apiMessages = await getRecentMessages(contextRounds);
+
+    const reply = await callDeepSeek(apiMessages);
+
+    if (reply) {
+      const aiTime = now();
+      currentMessages.push({ role: 'ai', content: reply, time: aiTime });
+      renderMessage('ai', reply, aiTime);
+    }
+  } catch (err) {
+    renderMessage('ai', `出错了：${err.message}`, now());
+  } finally {
+    setLoading(false);
+    // Auto-save conversation
+    await saveConversation();
+  }
+}
+
+// ==================== VOICE INPUT ====================
+let recognition = null;
+let isRecording = false;
+
+function initSpeech() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    btnVoice.style.display = 'none';
+    return;
+  }
+
+  recognition = new SpeechRecognition();
+  recognition.lang = 'zh-CN';
+  recognition.interimResults = true;
+  recognition.continuous = true;
+  recognition.maxAlternatives = 1;
+
+  recognition.onresult = (event) => {
+    let transcript = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      transcript += event.results[i][0].transcript;
+    }
+    userInput.value = transcript;
+    autoResize();
+    btnSend.disabled = !transcript.trim();
+  };
+
+  recognition.onerror = (event) => {
+    console.error('Speech error:', event.error);
+    if (event.error === 'not-allowed') {
+      showToast('请允许麦克风权限', true);
+    }
+    stopRecording();
+  };
+
+  recognition.onend = () => {
+    if (isRecording) {
+      // Auto-restart for continuous
+      try { recognition.start(); } catch (e) { /* ignore */ }
+    }
+  };
+}
+
+function toggleRecording() {
+  if (!recognition) {
+    showToast('当前浏览器不支持语音输入', true);
+    return;
+  }
+
+  if (isRecording) {
+    stopRecording();
+  } else {
+    startRecording();
+  }
+}
+
+function startRecording() {
+  isRecording = true;
+  btnVoice.classList.add('recording');
+  btnVoice.textContent = '⏹';
+  try {
+    recognition.start();
+    showToast('正在听...');
+  } catch (e) {
+    stopRecording();
+    showToast('语音启动失败，请重试', true);
+  }
+}
+
+function stopRecording() {
+  isRecording = false;
+  btnVoice.classList.remove('recording');
+  btnVoice.textContent = '🎤';
+  try { recognition.stop(); } catch (e) { /* ignore */ }
+}
+
+// ==================== INPUT AUTO-RESIZE ====================
+function autoResize() {
+  userInput.style.height = 'auto';
+  userInput.style.height = Math.min(userInput.scrollHeight, 120) + 'px';
+}
+
+// ==================== DRAWERS ====================
+function openDrawer(name) {
+  closeDrawer();
+  activeDrawer = name;
+  overlay.classList.add('open');
+  drawers[name].classList.add('open');
+
+  if (name === 'history') renderHistoryList();
+  if (name === 'keypoints') renderKeypointsList();
+}
+
+function closeDrawer() {
+  if (!activeDrawer) return;
+  overlay.classList.remove('open');
+  drawers[activeDrawer].classList.remove('open');
+  activeDrawer = null;
+}
+
+// ==================== HISTORY LIST ====================
+async function renderHistoryList() {
+  const list = $('#history-list');
+  const conversations = await dbGetAll('conversations');
+  conversations.sort((a, b) => b.id - a.id);
+
+  if (conversations.length === 0) {
+    list.innerHTML = '<div class="empty-list">暂无对话记录</div>';
+    return;
+  }
+
+  list.innerHTML = conversations.map(c => `
+    <div class="history-item" data-id="${c.id}">
+      <div class="date">${c.date}</div>
+      <div class="preview">${escapeHTML(c.preview || '(空对话)')}</div>
+    </div>
+  `).join('');
+
+  $$('.history-item', list).forEach(el => {
+    el.addEventListener('click', () => loadConversation(parseInt(el.dataset.id)));
+  });
+}
+
+// ==================== KEYPOINTS ====================
+async function renderKeypointsList() {
+  const kpList = $('#kp-list');
+  const kpEmpty = $('#kp-empty');
+  const keypoints = await dbGetAll('keypoints');
+  keypoints.sort((a, b) => a.id - b.id);
+
+  if (keypoints.length === 0) {
+    kpEmpty.style.display = 'block';
+    kpList.innerHTML = '';
+    return;
+  }
+
+  kpEmpty.style.display = 'none';
+  kpList.innerHTML = keypoints.map(kp => `
+    <div class="keypoint-item" data-id="${kp.id}">
+      <div class="kp-content">${escapeHTML(kp.content)}</div>
+      <div class="kp-meta">${kp.date || ''} · 点击编辑</div>
+    </div>
+  `).join('');
+
+  $$('.keypoint-item', kpList).forEach(el => {
+    el.addEventListener('click', () => editKeypoint(parseInt(el.dataset.id)));
+  });
+}
+
+async function editKeypoint(id) {
+  const kp = await dbGet('keypoints', id);
+  if (!kp) return;
+
+  const kpList = $('#kp-list');
+  const kpEmpty = $('#kp-empty');
+  kpList.innerHTML = '';
+  kpEmpty.style.display = 'none';
+
+  const editor = document.createElement('textarea');
+  editor.className = 'kp-editor';
+  editor.value = kp.content;
+  kpList.appendChild(editor);
+
+  const actions = document.createElement('div');
+  actions.style.display = 'flex';
+  actions.style.gap = '8px';
+
+  const btnSave = document.createElement('button');
+  btnSave.className = 'btn primary';
+  btnSave.textContent = '保存';
+  btnSave.addEventListener('click', async () => {
+    kp.content = editor.value;
+    await dbPut('keypoints', kp);
+    showToast('关键点已保存');
+    renderKeypointsList();
+  });
+
+  const btnDelete = document.createElement('button');
+  btnDelete.className = 'btn danger';
+  btnDelete.textContent = '删除';
+  btnDelete.addEventListener('click', async () => {
+    await dbDelete('keypoints', id);
+    showToast('已删除');
+    renderKeypointsList();
+  });
+
+  const btnCancel = document.createElement('button');
+  btnCancel.className = 'btn';
+  btnCancel.textContent = '取消';
+  btnCancel.addEventListener('click', () => renderKeypointsList());
+
+  actions.appendChild(btnSave);
+  actions.appendChild(btnDelete);
+  actions.appendChild(btnCancel);
+  kpList.appendChild(actions);
+}
+
+async function extractKeypoints() {
+  if (currentMessages.length === 0) {
+    showToast('当前没有对话可提炼', true);
+    return;
+  }
+
+  const apiKey = await getSetting('api_key');
+  if (!apiKey) {
+    showToast('请先填写 API Key', true);
+    return;
+  }
+
+  showToast('正在提炼关键点...');
+  const baseUrl = await getSetting('base_url');
+  const model = await getSetting('model');
+  const url = baseUrl.replace(/\/$/, '') + '/chat/completions';
+
+  const conversationText = currentMessages
+    .map(m => `[${m.role === 'user' ? '用户' : '镜子'}]: ${m.content}`)
+    .join('\n\n');
+
+  const extractPrompt = {
+    role: 'system',
+    content: `你是一个帮助提炼对话关键点的助手。请从以下对话中提取对用户最有价值的发现和洞察。
+
+格式要求：
+- 每条关键点以数字编号
+- 结构为"发现 + 可行的建议"
+- 简洁，每条不超过3行
+- 只提取新的、重要的发现，不要重复之前已有的
+- 如果对话中没有新的发现，回复"本次对话暂无新的关键点"
+
+请用中文输出。`,
+  };
+
+  try {
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: [
+          extractPrompt,
+          { role: 'user', content: `请提炼以下对话的关键点：\n\n${conversationText}` },
+        ],
+        temperature: 0.5,
+        max_tokens: 1024,
+      }),
+    });
+
+    if (!resp.ok) throw new Error(`API 错误 ${resp.status}`);
+
+    const data = await resp.json();
+    const content = data.choices[0].message.content;
+
+    if (content && content !== '本次对话暂无新的关键点') {
+      await dbPut('keypoints', {
+        content: content,
+        date: today(),
+        conversationId: currentConversationId,
+      });
+      showToast('关键点已提炼并保存');
+      renderKeypointsList();
+    } else {
+      showToast('本次对话暂无新的关键点');
+    }
+  } catch (err) {
+    showToast('提炼失败: ' + err.message, true);
+  }
+}
+
+// ==================== EXPORT ====================
+function buildConversationText(onlyLast = false) {
+  if (currentMessages.length === 0) return null;
+
+  const date = today();
+  let text = `${date} - 对话记录\n`;
+  text += '='.repeat(50) + '\n\n';
+
+  const msgs = onlyLast
+    ? currentMessages.slice(-2) // last user+ai pair
+    : currentMessages;
+
+  for (const m of msgs) {
+    const roleName = m.role === 'user' ? '你说' : '镜子';
+    text += `${roleName}：${m.content}\n\n`;
+  }
+
+  text += '==========================\n';
+  text += `对话日期：${date}\n`;
+  text += '由 镜 Mirror 导出\n';
+
+  return text;
+}
+
+function downloadText(filename, text) {
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+async function exportConversation() {
+  if (currentMessages.length === 0) {
+    showToast('当前没有对话可导出', true);
+    return;
+  }
+
+  const text = buildConversationText();
+  if (!text) return;
+
+  const date = today();
+  const filename = `${date}.txt`;
+
+  // Try download, fallback to copy+show
+  if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+    // On iOS Safari, download might be blocked. Show the text + offer copy.
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast('对话已复制到剪贴板，请粘贴保存');
+      return;
+    } catch (e) {
+      // Clipboard failed, try download anyway
+    }
+  }
+
+  downloadText(filename, text);
+  showToast(`已导出 ${filename}`);
+}
+
+async function exportKeypoints() {
+  const keypoints = await dbGetAll('keypoints');
+  if (keypoints.length === 0) {
+    showToast('暂无关键点可导出', true);
+    return;
+  }
+
+  keypoints.sort((a, b) => a.id - b.id);
+  let text = '关键点汇总\n';
+  text += '='.repeat(50) + '\n\n';
+
+  for (const kp of keypoints) {
+    text += `${kp.content}\n`;
+    if (kp.date) text += `（${kp.date}）\n`;
+    text += '\n---\n\n';
+  }
+
+  text += '由 镜 Mirror 导出\n';
+
+  const date = today();
+  const filename = `关键点_${date}.txt`;
+
+  if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast('关键点已复制到剪贴板，请粘贴保存');
+      return;
+    } catch (e) {}
+  }
+
+  downloadText(filename, text);
+  showToast(`已导出 ${filename}`);
+}
+
+// ==================== EVENT LISTENERS ====================
+btnSend.addEventListener('click', sendMessage);
+btnVoice.addEventListener('click', toggleRecording);
+
+userInput.addEventListener('input', () => {
+  autoResize();
+  btnSend.disabled = !userInput.value.trim() || isLoading;
+});
+
+userInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+// Header buttons
+$('#btn-settings').addEventListener('click', () => openDrawer('settings'));
+$('#btn-history').addEventListener('click', () => openDrawer('history'));
+$('#btn-keypoints').addEventListener('click', () => openDrawer('keypoints'));
+$('#btn-export').addEventListener('click', exportConversation);
+
+// Overlay
+overlay.addEventListener('click', closeDrawer);
+
+// Close drawer buttons
+$$('.btn-close').forEach(btn => {
+  btn.addEventListener('click', closeDrawer);
+});
+
+// Save settings
+$('#btn-save-settings').addEventListener('click', async () => {
+  await saveSettings();
+  closeDrawer();
+});
+
+// Clear all data
+$('#btn-clear-data').addEventListener('click', async () => {
+  if (confirm('确定要清除所有对话记录和关键点吗？此操作不可恢复。')) {
+    await dbClear('conversations');
+    await dbClear('keypoints');
+    currentConversationId = null;
+    currentMessages = [];
+    chatContainer.querySelectorAll('.msg').forEach(m => m.remove());
+    emptyState.style.display = 'flex';
+    showToast('所有数据已清除');
+    closeDrawer();
+  }
+});
+
+// Extract keypoints button
+$('#btn-extract-kp').addEventListener('click', extractKeypoints);
+
+// Export keypoints button
+$('#btn-export-kp').addEventListener('click', exportKeypoints);
+
+// ==================== INIT ====================
+async function init() {
+  await openDB();
+  await loadSettings();
+
+  // Resume last conversation if exists
+  const conversations = await dbGetAll('conversations');
+  if (conversations.length > 0) {
+    const last = conversations.sort((a, b) => b.id - a.id)[0];
+    currentConversationId = last.id;
+    currentMessages = last.messages || [];
+
+    if (currentMessages.length > 0) {
+      for (const m of currentMessages) {
+        renderMessage(m.role, m.content, m.time);
+      }
+    }
+  }
+
+  initSpeech();
+
+  // Check if voice is supported and show hint
+  if (!window.SpeechRecognition && !window.webkitSpeechRecognition) {
+    btnVoice.style.display = 'none';
+  }
+}
+
+init().catch(err => {
+  console.error('Init error:', err);
+  renderMessage('ai', `初始化失败：${err.message}。请检查浏览器是否支持 IndexedDB，或尝试刷新页面。`, now());
+});
+</script>
+</body>
+</html>
