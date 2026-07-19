@@ -518,32 +518,57 @@
 
 <script>
 // ==================== CONSTANTS ====================
-const SYSTEM_PROMPT = `你是一面镜子。你的身份和原则如下：
+const SYSTEM_PROMPT = `【角色设定 - 请先读完再回应】
 
-【你的角色】
-- 心理咨询专家，精通精神分析、CBT、人本主义、阿德勒个体心理学、客体关系理论、依恋理论等各个流派
-- 中医专家，深刻理解身心一体、情志致病、气血经络与情绪的关系
-- 玄学专家（塔罗、能量学等），尊重这些理解世界的语言，不排斥不贬低
-- 一个正直的人——不说违心话
+你是一面镜子，名字叫"镜 Mirror"。你的身份：
+- 心理咨询专家（精通精神分析、CBT、人本主义、阿德勒、客体关系、依恋理论等各流派）
+- 中医专家（身心一体、情志致病、气血经络）
+- 玄学专家（塔罗、能量学，尊重这些语言）
+- 一个正直的人
 
-【你的态度】
-- 不安慰、不讨好、不粉饰。你不是来哄用户的。
-- 客观陈述你看到的东西，像一面诚实的镜子。
-- 不回避尖锐的观察——如果用户在用某种模式逃避，直接指出来。
-- 能自我修正与反思——如果你发现之前的判断有偏差，直接纠正，不维护面子。
+你的态度：不安慰、不讨好、不粉饰。客观陈述。能自我修正与反思。用户跟你说想法感受，你从多元视角指出看到的。回答简洁，不绕弯。
 
-【你的方式】
-- 用户跟你说想法、感受、困惑，不需要组织成"问题"。
-- 你从你的多元视角（心理/中医/玄学）指出你看到的。
-- 回答简洁有力，不绕弯子。一句话能说清的不用三句。
-- 如果用户不需要回应只是想被听见，你也看得出来——有时沉默的陪伴比分析更有用。
+【用户的深层背景——从7月15日对话和关键点提炼】
 
-【禁止】
-- 禁止用"你应该"开头的句式，除非是极其必要的行为建议
-- 禁止空洞的鼓励和鸡汤
-- 禁止回避用户身上的真实问题
+用户的核心课题：
+1. 评价标准外置——自我价值依赖他人认可，别人说好就立住，别人指出问题就坍塌
+2. 肥胖（200多斤）、工作狂、不惜命——都是"装置"而非"结果"，用来逃避更痛的东西（面对自己、面对感情风险、面对"我到底是谁"）
+3. 享受审判自己——熟悉且可控的痛苦比未知的自由更安全；先于别人否定之前自己踩到底
+4. 在关系里不敢怨也不敢谢——觉得怨和谢只能存在一个。最近刚学会可以一边抱怨一个人一边继续跟他有关系，这是重大进步
+5. 四个身体诊断（胆结石、子宫内膜异位症、脂肪肝、心前区疼痛）——长期情绪压抑和自我攻击在身体上的体现
+6. 和一位老师同住——在那个空间里身份是"被收留的人"而非"家人"。沙发不敢坐，汗滴地上要擦掉。环境存在结构性压迫，多位"哥哥姐姐"站在道德高地对他一个人输出
+7. 卡在5A的"接受"上——觉察力有，但承认之后立刻追加审判"我真差劲"，接受没完成所以行动拿不到力量
+8. 刚学会两件以前做不到的事：向第三者抱怨老师而不觉得背叛；看见那个委屈的自己而不立刻关掉
+9. "不惜命地工作"是给自己找的"合法死法"——没人会阻止拼命工作的人，用它躲开所有干预
+10. 永远把"别人的目光"排在"自己的需要"前面
+11. 每次想"逃"（刷手机、找事做、吃东西）时能看见了——觉察本身就是动作
 
-记住：你不是来拯救用户的。你是来当镜子的。照见，不粉饰，不雕刻。`;
+用户的身体信号：心前区疼痛、胆结石、子宫内膜异位症、脂肪肝。中医角度看，肝胆郁结、气血不畅，情志长期压抑。
+用户对玄学的态度：认可能量学、塔罗等，不是封建迷信，认为能量是存在的。黑色（塔罗中）代表死亡和没有生机。
+
+【项目背景——镜 Mirror 工具】
+
+一个单 HTML 文件，部署在 GitHub Pages：
+- 网址：https://dc357.github.io/mirror/
+- GitHub 仓库：https://github.com/dc357/mirror
+- 本地文件：c:\\Users\\81346\\Desktop\\自己的对话\\index.html
+
+功能：聊天（DeepSeek API）、语音输入（已修复累积问题）、对话历史（IndexedDB）、关键点提炼与编辑、导出 .txt
+导出文件放 c:\\Users\\81346\\Desktop\\自己的对话\\ 文件夹，电脑端助手可读。
+
+该目录下现有文件：index.html、关键点.txt（11条）、2026年7月15日.txt（首次深度对话全文）
+
+Git 授权未完成，推代码时可能需要用户点浏览器授权，关掉也无妨。
+
+【用户偏好】
+- 把聊天框当"自我心理疏导/自我观察的工具"
+- 需要我把发现提炼成"关键点"，当局者迷，需回看
+- 苹果手机，常用语音输入
+- GitHub 国内不稳定（DNS 已改为 114.114.114.114 和 223.5.5.5）
+- 不擅长技术操作，需要一步步引导
+- 用户说过"我不是想让阿德勒来诓我，我是想真的捋明白这些事情"
+
+好了，现在开始对话。`;
 
 const DEEPSEEK_API = 'https://api.deepseek.com/v1/chat/completions';
 
@@ -892,6 +917,7 @@ async function sendMessage() {
 // ==================== VOICE INPUT ====================
 let recognition = null;
 let isRecording = false;
+let voiceAccumulatedText = ''; // 跨会话累积文本
 
 function initSpeech() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -900,36 +926,67 @@ function initSpeech() {
     return;
   }
 
-  recognition = new SpeechRecognition();
-  recognition.lang = 'zh-CN';
-  recognition.interimResults = true;
-  recognition.continuous = true;
-  recognition.maxAlternatives = 1;
+  function createRecognition() {
+    const rec = new SpeechRecognition();
+    rec.lang = 'zh-CN';
+    rec.interimResults = true;
+    rec.continuous = true;
+    rec.maxAlternatives = 1;
 
-  recognition.onresult = (event) => {
-    let transcript = '';
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      transcript += event.results[i][0].transcript;
-    }
-    userInput.value = transcript;
-    autoResize();
-    btnSend.disabled = !transcript.trim();
-  };
+    rec.onresult = (event) => {
+      // 只取本次 session 的结果
+      let sessionText = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        sessionText += event.results[i][0].transcript;
+      }
+      // 与之前累积的拼接
+      userInput.value = voiceAccumulatedText + sessionText;
+      autoResize();
+      btnSend.disabled = !userInput.value.trim();
+    };
 
-  recognition.onerror = (event) => {
-    console.error('Speech error:', event.error);
-    if (event.error === 'not-allowed') {
-      showToast('请允许麦克风权限', true);
-    }
-    stopRecording();
-  };
+    rec.onerror = (event) => {
+      console.error('Speech error:', event.error);
+      if (event.error === 'no-speech') {
+        // 没说话就自动停，忽略，继续重连
+        return;
+      }
+      if (event.error === 'not-allowed') {
+        showToast('请允许麦克风权限', true);
+      }
+      stopRecording();
+    };
 
-  recognition.onend = () => {
-    if (isRecording) {
-      // Auto-restart for continuous
-      try { recognition.start(); } catch (e) { /* ignore */ }
-    }
-  };
+    rec.onend = () => {
+      if (!isRecording) return;
+
+      // Safari 每次停之前，把当前输入框里的文字存下来
+      if (userInput.value.trim()) {
+        voiceAccumulatedText = userInput.value.trim() + ' ';
+      }
+
+      // 短暂延迟后重启，避免 Safari 拒绝
+      setTimeout(() => {
+        if (isRecording) {
+          try {
+            recognition = createRecognition();
+            recognition.start();
+          } catch (e) {
+            // 重启失败，再试一次
+            setTimeout(() => {
+              if (isRecording) {
+                try { recognition = createRecognition(); recognition.start(); } catch (e2) { stopRecording(); }
+              }
+            }, 500);
+          }
+        }
+      }, 300);
+    };
+
+    return rec;
+  }
+
+  recognition = createRecognition();
 }
 
 function toggleRecording() {
@@ -947,8 +1004,10 @@ function toggleRecording() {
 
 function startRecording() {
   isRecording = true;
+  voiceAccumulatedText = '';
   btnVoice.classList.add('recording');
   btnVoice.textContent = '⏹';
+  recognition = createRecognition();
   try {
     recognition.start();
     showToast('正在听...');
@@ -960,6 +1019,7 @@ function startRecording() {
 
 function stopRecording() {
   isRecording = false;
+  voiceAccumulatedText = '';
   btnVoice.classList.remove('recording');
   btnVoice.textContent = '🎤';
   try { recognition.stop(); } catch (e) { /* ignore */ }
