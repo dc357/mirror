@@ -342,6 +342,27 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
+  .history-item .item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+  .history-item .btn-export-item {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s;
+  }
+  .history-item .btn-export-item:active {
+    background: var(--accent-bg);
+    color: var(--accent);
+  }
   .keypoint-item {
     white-space: pre-wrap;
     color: var(--text);
@@ -1062,13 +1083,28 @@ async function renderHistoryList() {
 
   list.innerHTML = conversations.map(c => `
     <div class="history-item" data-id="${c.id}">
-      <div class="date">${c.date}</div>
+      <div class="item-header">
+        <div class="date">${c.date}</div>
+        <button class="btn-export-item" data-export-id="${c.id}">↓ 导出</button>
+      </div>
       <div class="preview">${escapeHTML(c.preview || '(空对话)')}</div>
     </div>
   `).join('');
 
   $$('.history-item', list).forEach(el => {
-    el.addEventListener('click', () => loadConversation(parseInt(el.dataset.id)));
+    el.addEventListener('click', (e) => {
+      // 如果点击的是导出按钮，不触发加载
+      if (e.target.classList.contains('btn-export-item')) return;
+      loadConversation(parseInt(el.dataset.id));
+    });
+  });
+
+  // 导出按钮事件
+  $$('.btn-export-item', list).forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      exportHistoryConversation(parseInt(btn.dataset.exportId));
+    });
   });
 }
 
@@ -1221,6 +1257,41 @@ async function extractKeypoints() {
 }
 
 // ==================== EXPORT ====================
+// 导出历史中的某一天对话
+async function exportHistoryConversation(id) {
+  const conv = await dbGet('conversations', id);
+  if (!conv || !conv.messages || conv.messages.length === 0) {
+    showToast('该对话没有内容', true);
+    return;
+  }
+
+  const date = conv.date || today();
+  let text = `${date} - 对话记录\n`;
+  text += '='.repeat(50) + '\n\n';
+
+  for (const m of conv.messages) {
+    const roleName = m.role === 'user' ? '你说' : '镜子';
+    text += `${roleName}：${m.content}\n\n`;
+  }
+
+  text += '==========================\n';
+  text += `对话日期：${date}\n`;
+  text += '由 镜 Mirror 导出\n';
+
+  const filename = `${date}.txt`;
+
+  if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast(`已复制 ${date} 的对话到剪贴板`);
+      return;
+    } catch (e) {}
+  }
+
+  downloadText(filename, text);
+  showToast(`已导出 ${filename}`);
+}
+
 function buildConversationText(onlyLast = false) {
   if (currentMessages.length === 0) return null;
 
