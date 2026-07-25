@@ -491,7 +491,7 @@
     </div>
     <div class="settings-group">
       <label>模型</label>
-      <input type="text" id="setting-model" value="deepseek-chat" placeholder="deepseek-chat">
+      <input type="text" id="setting-model" value="deepseek-v4-pro" placeholder="deepseek-v4-pro">
     </div>
     <div class="settings-group">
       <label>API 地址</label>
@@ -727,7 +727,7 @@ function showToast(msg, isError = false) {
 async function loadSettings() {
   const defaults = {
     api_key: '',
-    model: 'deepseek-chat',
+    model: 'deepseek-v4-pro',
     base_url: 'https://api.deepseek.com/v1',
     context_rounds: '20',
   };
@@ -747,7 +747,7 @@ async function loadSettings() {
 async function saveSettings() {
   const pairs = [
     { key: 'api_key', value: settingApiKey.value.trim() },
-    { key: 'model', value: settingModel.value.trim() || 'deepseek-chat' },
+    { key: 'model', value: settingModel.value.trim() || 'deepseek-v4-pro' },
     { key: 'base_url', value: settingBaseUrl.value.trim() || 'https://api.deepseek.com/v1' },
     { key: 'context_rounds', value: settingContextRounds.value || '20' },
   ];
@@ -761,7 +761,7 @@ async function getSetting(key) {
   const stored = await dbGet('settings', key);
   const defaults = {
     api_key: '',
-    model: 'deepseek-chat',
+    model: 'deepseek-v4-pro',
     base_url: 'https://api.deepseek.com/v1',
     context_rounds: '20',
   };
