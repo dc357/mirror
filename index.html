@@ -703,7 +703,7 @@ let isLoading = false;
 
 // ==================== UTILS ====================
 function now() {
-  return new Date().toLocaleString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+  return new Date().toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 
 function today() {
@@ -1271,7 +1271,8 @@ async function exportHistoryConversation(id) {
 
   for (const m of conv.messages) {
     const roleName = m.role === 'user' ? '你说' : '镜子';
-    text += `${roleName}：${m.content}\n\n`;
+    const timeStr = m.time ? `[${m.time}] ` : '';
+    text += `${timeStr}${roleName}：${m.content}\n\n`;
   }
 
   text += '==========================\n';
@@ -1305,7 +1306,8 @@ function buildConversationText(onlyLast = false) {
 
   for (const m of msgs) {
     const roleName = m.role === 'user' ? '你说' : '镜子';
-    text += `${roleName}：${m.content}\n\n`;
+    const timeStr = m.time ? `[${m.time}] ` : '';
+    text += `${timeStr}${roleName}：${m.content}\n\n`;
   }
 
   text += '==========================\n';
