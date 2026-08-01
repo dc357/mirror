@@ -227,6 +227,52 @@
   }
   .overlay.open { opacity: 1; pointer-events: auto; }
 
+  /* ========== MODAL ========== */
+  .modal {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%) scale(0.9);
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px 20px;
+    width: min(80vw, 320px);
+    z-index: 200;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s;
+    box-shadow: var(--shadow);
+  }
+  .modal.open { opacity: 1; pointer-events: auto; transform: translate(-50%, -50%) scale(1); }
+  .modal h3 { font-family: var(--font-heading); color: var(--accent); margin-bottom: 16px; text-align: center; }
+  .modal .date-option {
+    display: block; width: 100%;
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-size: 15px;
+    cursor: pointer;
+    text-align: center;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .modal .date-option:hover, .modal .date-option:active {
+    background: var(--accent-bg);
+    border-color: var(--accent-dim);
+  }
+  .modal .date-option.all { color: var(--accent); }
+  .modal .modal-cancel {
+    display: block; width: 100%;
+    padding: 10px;
+    margin-top: 12px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 14px;
+    cursor: pointer;
+  }
+
   .drawer {
     position: fixed;
     top: 0; bottom: 0; right: 0;
@@ -532,6 +578,13 @@
     <button class="btn" id="btn-extract-kp" style="margin-top:12px;width:100%;">从最近对话提炼关键点</button>
     <button class="btn" id="btn-export-kp" style="margin-top:8px;width:100%;">导出全部关键点</button>
   </div>
+</div>
+
+<!-- MODAL: DATE SELECT -->
+<div class="modal" id="modal-date-select">
+  <h3>选择导出日期</h3>
+  <div id="date-select-list"></div>
+  <button class="modal-cancel" id="btn-date-cancel">取消</button>
 </div>
 
 <!-- TOAST -->
@@ -1293,16 +1346,25 @@ async function exportHistoryConversation(id) {
   showToast(`已导出 ${filename}`);
 }
 
-function buildConversationText(onlyLast = false) {
+function buildConversationText(onlyLast = false, dateFilter = null) {
   if (currentMessages.length === 0) return null;
 
-  const date = today();
-  let text = `${date} - 对话记录\n`;
-  text += '='.repeat(50) + '\n\n';
-
-  const msgs = onlyLast
+  let msgs = onlyLast
     ? currentMessages.slice(-2) // last user+ai pair
     : currentMessages;
+
+  if (dateFilter) {
+    msgs = msgs.filter(m => {
+      const d = getDateFromTime(m.time);
+      return d === dateFilter || (!d && dateFilter === 'unknown');
+    });
+  }
+
+  if (msgs.length === 0) return null;
+
+  const date = dateFilter && dateFilter !== 'unknown' ? dateFilter.replace('/', '月') + '日' : today();
+  let text = `${date} - 对话记录\n`;
+  text += '='.repeat(50) + '\n\n';
 
   for (const m of msgs) {
     const roleName = m.role === 'user' ? '你说' : '镜子';
@@ -1315,6 +1377,32 @@ function buildConversationText(onlyLast = false) {
   text += '由 镜 Mirror 导出\n';
 
   return text;
+}
+
+// 从 time 字段提取日期（MM/DD），旧格式返回 null
+function getDateFromTime(timeStr) {
+  if (!timeStr) return null;
+  const match = timeStr.match(/^(\d{2}\/\d{2})/);
+  return match ? match[1] : null;
+}
+
+// 获取当前会话中所有不同日期
+function getConversationDates() {
+  const dates = new Set();
+  let hasUnknown = false;
+  for (const m of currentMessages) {
+    const d = getDateFromTime(m.time);
+    if (d) dates.add(d);
+    else hasUnknown = true;
+  }
+  const sorted = Array.from(dates).sort();
+  if (hasUnknown) sorted.push('unknown');
+  return sorted;
+}
+
+function formatDateLabel(dateStr) {
+  if (dateStr === 'unknown') return '早期对话（无日期）';
+  return dateStr.replace('/', '月') + '日';
 }
 
 function downloadText(filename, text) {
@@ -1335,22 +1423,72 @@ async function exportConversation() {
     return;
   }
 
-  const text = buildConversationText();
-  if (!text) return;
+  const dates = getConversationDates();
 
-  const date = today();
+  // 只有一天或没有日期信息，直接导出全部
+  if (dates.length <= 1) {
+    await doExport(null);
+    return;
+  }
+
+  // 多天，弹出日期选择
+  showDateSelectModal(dates);
+}
+
+function showDateSelectModal(dates) {
+  const list = $('#date-select-list');
+  list.innerHTML = '';
+
+  // 每个日期一个选项
+  for (const d of dates) {
+    const btn = document.createElement('button');
+    btn.className = 'date-option';
+    btn.textContent = formatDateLabel(d);
+    btn.onclick = () => {
+      closeDateSelectModal();
+      doExport(d);
+    };
+    list.appendChild(btn);
+  }
+
+  // 全部导出
+  const allBtn = document.createElement('button');
+  allBtn.className = 'date-option all';
+  allBtn.textContent = '全部导出';
+  allBtn.onclick = () => {
+    closeDateSelectModal();
+    doExport(null);
+  };
+  list.appendChild(allBtn);
+
+  $('#modal-date-select').classList.add('open');
+  overlay.classList.add('open');
+}
+
+function closeDateSelectModal() {
+  $('#modal-date-select').classList.remove('open');
+  overlay.classList.remove('open');
+}
+
+async function doExport(dateFilter) {
+  const text = buildConversationText(false, dateFilter);
+  if (!text) {
+    showToast('该日期没有对话内容', true);
+    return;
+  }
+
+  const date = dateFilter && dateFilter !== 'unknown'
+    ? dateFilter.replace('/', '月') + '日'
+    : today();
   const filename = `${date}.txt`;
 
-  // Try download, fallback to copy+show
+  // iOS: 复制到剪贴板
   if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
-    // On iOS Safari, download might be blocked. Show the text + offer copy.
     try {
       await navigator.clipboard.writeText(text);
-      showToast('对话已复制到剪贴板，请粘贴保存');
+      showToast(`已复制 ${date} 的对话到剪贴板`);
       return;
-    } catch (e) {
-      // Clipboard failed, try download anyway
-    }
+    } catch (e) {}
   }
 
   downloadText(filename, text);
@@ -1414,7 +1552,13 @@ $('#btn-keypoints').addEventListener('click', () => openDrawer('keypoints'));
 $('#btn-export').addEventListener('click', exportConversation);
 
 // Overlay
-overlay.addEventListener('click', closeDrawer);
+overlay.addEventListener('click', () => {
+  closeDrawer();
+  closeDateSelectModal();
+});
+
+// Date select cancel
+$('#btn-date-cancel').addEventListener('click', closeDateSelectModal);
 
 // Close drawer buttons
 $$('.btn-close').forEach(btn => {
