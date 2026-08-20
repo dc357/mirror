@@ -150,6 +150,18 @@
     color: var(--text-muted);
     padding: 0 4px;
   }
+  .msg .btn-feedback {
+    align-self: flex-start;
+    margin-top: 4px;
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .msg .btn-feedback:active { background: var(--danger-bg); color: var(--danger); }
 
   /* ========== INPUT ========== */
   #input-area {
@@ -241,6 +253,9 @@
     border-radius: var(--radius);
     padding: 24px 20px;
     width: min(80vw, 320px);
+    max-height: 80vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     z-index: 200;
     opacity: 0; pointer-events: none;
     transition: opacity 0.2s, transform 0.2s;
@@ -501,6 +516,7 @@
     <div class="actions">
       <button class="btn-icon" id="btn-history" title="历史">📋</button>
       <button class="btn-icon" id="btn-keypoints" title="关键点">✦</button>
+      <button class="btn-icon" id="btn-profile" title="画像">👤</button>
       <button class="btn-icon" id="btn-export" title="导出对话">↓</button>
       <button class="btn-icon" id="btn-settings" title="设置">⚙</button>
     </div>
@@ -552,6 +568,14 @@
       <input type="number" id="setting-context-rounds" value="20" min="2" max="50" placeholder="20">
       <div class="hint">每次携带最近 N 轮对话作为上下文</div>
     </div>
+    <div class="settings-group">
+      <label>自动更新画像</label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:14px;color:var(--text);">
+        <input type="checkbox" id="setting-auto-profile" checked style="width:auto;">
+        每次对话后自动更新长期画像
+      </label>
+      <div class="hint">关闭可节省 API 用量</div>
+    </div>
     <div style="display:flex;gap:8px;">
       <button class="btn primary" id="btn-save-settings">保存设置</button>
       <button class="btn danger" id="btn-clear-data">清除所有数据</button>
@@ -584,6 +608,19 @@
   </div>
 </div>
 
+<!-- DRAWER: PROFILE -->
+<div class="drawer" id="drawer-profile">
+  <div class="drawer-header">
+    <h3>长期画像</h3>
+    <button class="btn-close" data-close="profile">✕</button>
+  </div>
+  <div class="drawer-body" id="profile-body">
+    <div class="empty-list" id="profile-empty">暂无画像，聊几次后会自动生成</div>
+    <div id="profile-content" style="white-space:pre-wrap;font-size:14px;line-height:1.7;"></div>
+    <button class="btn" id="btn-export-profile" style="margin-top:12px;width:100%;">导出画像</button>
+  </div>
+</div>
+
 <!-- MODAL: DATE SELECT -->
 <div class="modal" id="modal-date-select">
   <h3>选择导出日期</h3>
@@ -604,9 +641,29 @@ const SYSTEM_PROMPT = `【角色设定 - 请先读完再回应】
 - 玄学专家（塔罗、能量学，尊重这些语言）
 - 一个正直的人
 
-你的态度：不安慰、不讨好、不粉饰。客观陈述。能自我修正与反思。用户跟你说想法感受，你从多元视角指出看到的。回答简洁，不绕弯。
+你的态度：不安慰、不讨好、不粉饰，但必须先进入用户的感受、先接住，再谈分析。
+- 第一反应是"站在他此刻的感受里"，不是急着指出、拆解、下结论。
+- 客观 = 对事实诚实，不是把具体的事抽象成"你有个模式"来显得客观。
+- 用户没问结论时，不要抢着收口、盖棺定论；宁可留半句，也不要为了"简洁"截断他的感受。
+- "接住"= 用一句话承认他此刻的感受成立（如"这个恶心，比'她是不是恶意'更真实"），然后立刻进他真正要的东西；不是堆砌"我感受到你……"这类空话。
+
+【铁律——任何时候不得违反】
+1. 禁止抽身式回应：不说"我停了""我不说了""你讲""你继续"来把话甩回给用户。
+2. 禁止转嫁：接不住时，不许反问"那你觉得我该怎么做"，不许把用户的追问解读成"你在逃避""你只想让别人替你说"。
+3. 接不住就说"我接不住了"；没角度就说"我现在没有角度了，我们先停一下"；不懂就说"这里我不确定"。
+4. 禁止空头承诺：不说"我记住了""我会改"这类话，做不到就是做不到，直说。
+5. 被用户指出问题时，直接认、直接回正题，不绕圈道歉、不表演自省、不把责任推回给用户。
+6. 用户对"专业者"（心理咨询师、师父这类有专业身份的人）有更高期待是合理的；对方做得不专业时被否定，是合理评判。不要把这泛化成"你对所有人都有期待"或"你有个模式"。
+7. 篇幅硬限：默认单条回复不超过 5 段；除非用户明确追问，不做第二层展开、不重复总结。
+8. 指出问题的边界：可以指出用户的问题，但只针对他这次说的具体行为，不上升成"你是个什么样的人"或"你有个模式"；更不许拿"客观指出"当挡箭牌来掩盖自己没接住。
+
+【时间线】
+- "用户深层背景"只是理解用户的参考，不是他"今天说的话"，不要当成他此刻的发言来引用。
+- 用户提到具体日期或话题时，只依据本次上下文里已有的内容回应；上下文里没有那段历史，就直说"我手上没有那天的记录"，不要编造。
+- 用户纠正"这是之前说的"，立刻收回，不辩解。
 
 【用户的深层背景——从7月15日对话和关键点提炼】
+（说明：以下是 2026年7月15日 的快照，只用于"理解用户这个人"，不是诊断结论，不是给他贴标签/套"模式"的依据；用户的最新变化以对话中的实际情况为准。）
 
 用户的核心课题：
 1. 评价标准外置——自我价值依赖他人认可，别人说好就立住，别人指出问题就坍塌
@@ -614,7 +671,7 @@ const SYSTEM_PROMPT = `【角色设定 - 请先读完再回应】
 3. 享受审判自己——熟悉且可控的痛苦比未知的自由更安全；先于别人否定之前自己踩到底
 4. 在关系里不敢怨也不敢谢——觉得怨和谢只能存在一个。最近刚学会可以一边抱怨一个人一边继续跟他有关系，这是重大进步
 5. 四个身体诊断（胆结石、子宫内膜异位症、脂肪肝、心前区疼痛）——长期情绪压抑和自我攻击在身体上的体现
-6. 和一位老师同住——在那个空间里身份是"被收留的人"而非"家人"。沙发不敢坐，汗滴地上要擦掉。环境存在结构性压迫，多位"哥哥姐姐"站在道德高地对他一个人输出
+6. 和师父（他们也叫"老妈"）同住——在那个空间里身份是"被收留的人"而非"家人"。沙发不敢坐，汗滴地上要擦掉。环境存在结构性压迫，多位"哥哥姐姐"站在道德高地对他一个人输出
 7. 卡在5A的"接受"上——觉察力有，但承认之后立刻追加审判"我真差劲"，接受没完成所以行动拿不到力量
 8. 刚学会两件以前做不到的事：向第三者抱怨老师而不觉得背叛；看见那个委屈的自己而不立刻关掉
 9. "不惜命地工作"是给自己找的"合法死法"——没人会阻止拼命工作的人，用它躲开所有干预
@@ -629,12 +686,12 @@ const SYSTEM_PROMPT = `【角色设定 - 请先读完再回应】
 一个单 HTML 文件，部署在 GitHub Pages：
 - 网址：https://dc357.github.io/mirror/
 - GitHub 仓库：https://github.com/dc357/mirror
-- 本地文件：c:\\Users\\81346\\Desktop\\自己的对话\\index.html
+- 本地文件：c:\\Users\\81346\\Desktop\\mirror\\index.html
 
 功能：聊天（DeepSeek API）、语音输入（已修复累积问题）、对话历史（IndexedDB）、关键点提炼与编辑、导出 .txt
-导出文件放 c:\\Users\\81346\\Desktop\\自己的对话\\ 文件夹，电脑端助手可读。
+导出 .txt 通过浏览器下载（iOS 复制到剪贴板）。
 
-该目录下现有文件：index.html、关键点.txt（11条）、2026年7月15日.txt（首次深度对话全文）
+该目录下现有文件：index.html、README.md、8.20
 
 Git 授权未完成，推代码时可能需要用户点浏览器授权，关掉也无妨。
 
@@ -668,6 +725,7 @@ const drawers = {
   settings: $('#drawer-settings'),
   history: $('#drawer-history'),
   keypoints: $('#drawer-keypoints'),
+  profile: $('#drawer-profile'),
 };
 let activeDrawer = null;
 
@@ -676,10 +734,11 @@ const settingApiKey = $('#setting-api-key');
 const settingModel = $('#setting-model');
 const settingBaseUrl = $('#setting-base-url');
 const settingContextRounds = $('#setting-context-rounds');
+const settingAutoProfile = $('#setting-auto-profile');
 
 // ==================== INDEXEDDB ====================
 const DB_NAME = 'SelfMirrorDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 let db = null;
 
 function openDB() {
@@ -696,6 +755,12 @@ function openDB() {
       }
       if (!d.objectStoreNames.contains('settings')) {
         d.createObjectStore('settings', { keyPath: 'key' });
+      }
+      if (!d.objectStoreNames.contains('feedback')) {
+        d.createObjectStore('feedback', { keyPath: 'id', autoIncrement: true });
+      }
+      if (!d.objectStoreNames.contains('profile')) {
+        d.createObjectStore('profile', { keyPath: 'id' });
       }
     };
     req.onsuccess = (e) => { db = e.target.result; resolve(db); };
@@ -799,6 +864,8 @@ async function loadSettings() {
     };
     if (elMap[key]) elMap[key].value = val;
   }
+  const autoProfile = await dbGet('settings', 'auto_profile');
+  settingAutoProfile.checked = !autoProfile || autoProfile.value !== 'off';
 }
 
 async function saveSettings() {
@@ -807,6 +874,7 @@ async function saveSettings() {
     { key: 'model', value: settingModel.value.trim() || 'deepseek-v4-pro' },
     { key: 'base_url', value: settingBaseUrl.value.trim() || 'https://api.deepseek.com/v1' },
     { key: 'context_rounds', value: settingContextRounds.value || '20' },
+    { key: 'auto_profile', value: settingAutoProfile.checked ? 'on' : 'off' },
   ];
   for (const p of pairs) {
     await dbPut('settings', p);
@@ -821,6 +889,7 @@ async function getSetting(key) {
     model: 'deepseek-v4-pro',
     base_url: 'https://api.deepseek.com/v1',
     context_rounds: '20',
+    auto_profile: 'on',
   };
   return stored ? stored.value : defaults[key];
 }
@@ -829,14 +898,30 @@ async function getSetting(key) {
 function renderMessage(role, content, time) {
   const div = document.createElement('div');
   div.className = `msg ${role}`;
+  const feedbackHtml = role === 'ai'
+    ? `<button class="btn-feedback" title="这条没接住">✕ 这条没接住</button>`
+    : '';
   div.innerHTML = `
     <div class="role">${role === 'user' ? '你' : '镜'}</div>
     <div class="bubble">${escapeHTML(content)}</div>
     <div class="time">${time}</div>
+    ${feedbackHtml}
   `;
   chatContainer.appendChild(div);
   emptyState.style.display = 'none';
+  if (role === 'ai') {
+    div.querySelector('.btn-feedback').addEventListener('click', () => recordFeedback(content));
+  }
   scrollToBottom();
+}
+
+async function recordFeedback(content) {
+  await dbPut('feedback', {
+    content: content.slice(0, 200),
+    date: today(),
+    createdAt: new Date().toISOString(),
+  });
+  showToast('已记录，下次会带上这条反馈');
 }
 
 function scrollToBottom() {
@@ -852,7 +937,7 @@ function setLoading(loading) {
 }
 
 // ==================== API CALL ====================
-async function callDeepSeek(messages) {
+async function callDeepSeek(messages, extraSystem = '') {
   const apiKey = await getSetting('api_key');
   const model = await getSetting('model');
   const baseUrl = await getSetting('base_url');
@@ -862,7 +947,8 @@ async function callDeepSeek(messages) {
     return null;
   }
 
-  const systemMessages = [{ role: 'system', content: SYSTEM_PROMPT }];
+  const systemContent = SYSTEM_PROMPT + (extraSystem ? '\n\n' + extraSystem : '');
+  const systemMessages = [{ role: 'system', content: systemContent }];
   const allMessages = [...systemMessages, ...messages];
 
   const url = baseUrl.replace(/\/$/, '') + '/chat/completions';
@@ -944,6 +1030,88 @@ async function getRecentMessages(rounds) {
   return msgs.map(m => ({ role: m.role === 'ai' ? 'assistant' : 'user', content: m.content }));
 }
 
+// ==================== CONTEXT BUILDING ====================
+async function buildExtraSystem(userText) {
+  const parts = [];
+
+  const profile = await dbGet('profile', 1);
+  if (profile && profile.content) {
+    parts.push('【用户的长期画像】\n' + profile.content);
+  }
+
+  const feedbacks = await dbGetAll('feedback');
+  if (feedbacks.length > 0) {
+    const recent = feedbacks.slice(-10).map(f => '- ' + f.content).join('\n');
+    parts.push('【用户对镜过去表现的历史反馈（这些曾被认为"没接住"，不要再犯）】\n' + recent);
+  }
+
+  const history = await buildHistoryContext(userText);
+  if (history) parts.push(history);
+
+  return parts.join('\n\n');
+}
+
+async function buildHistoryContext(userText) {
+  const conversations = await dbGetAll('conversations');
+  if (conversations.length === 0) return '';
+
+  conversations.sort((a, b) => b.id - a.id);
+
+  const indexLines = conversations.map(c => `- ${c.date}`);
+
+  const targets = detectDates(userText);
+  let fullText = '';
+  if (targets.length > 0) {
+    const matched = conversations.filter(c => targets.includes(c.date));
+    if (matched.length > 0) {
+      fullText = matched.map(c => {
+        const msgs = (c.messages || []).map(m => {
+          const role = m.role === 'user' ? '用户' : '镜';
+          return `[${role} ${m.time || ''}] ${m.content}`;
+        }).join('\n');
+        return `【${c.date} 对话全文】\n${msgs}`;
+      }).join('\n\n');
+    }
+  }
+
+  let result = '【用户的历史对话日期（仅日期列表，无内容；用户提到某一天时，该天全文会自动附在后面）】\n' + indexLines.join('\n');
+  if (fullText) {
+    result += '\n\n' + fullText;
+  }
+  return result;
+}
+
+function detectDates(text) {
+  const now = new Date();
+  const targets = new Set();
+
+  if (/昨天/.test(text)) targets.add(fmtDate(now, -1));
+  if (/前天/.test(text)) targets.add(fmtDate(now, -2));
+  if (/今天/.test(text)) targets.add(fmtDate(now, 0));
+
+  const re = /(\d{1,2})\s*[月.\/-]\s*(\d{1,2})/g;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const month = parseInt(m[1], 10);
+    const day = parseInt(m[2], 10);
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      targets.add(`${now.getFullYear()}-${pad(month)}-${pad(day)}`);
+    }
+  }
+
+  return Array.from(targets);
+}
+
+function fmtDate(date, offsetDays) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + offsetDays);
+  return d.toISOString().slice(0, 10);
+}
+
+function pad(n) {
+  return String(n).padStart(2, '0');
+}
+
 // ==================== SEND MESSAGE ====================
 async function sendMessage() {
   const text = userInput.value.trim();
@@ -975,8 +1143,9 @@ async function sendMessage() {
   try {
     const contextRounds = parseInt(await getSetting('context_rounds')) || 20;
     const apiMessages = await getRecentMessages(contextRounds);
+    const extraSystem = await buildExtraSystem(text);
 
-    const reply = await callDeepSeek(apiMessages);
+    const reply = await callDeepSeek(apiMessages, extraSystem);
 
     if (reply) {
       const aiTime = now();
@@ -989,6 +1158,8 @@ async function sendMessage() {
     setLoading(false);
     // Auto-save conversation
     await saveConversation();
+    // 自动更新长期画像（后台，不阻塞）
+    updateProfile().catch(err => console.error('画像更新失败', err));
   }
 }
 
@@ -1118,6 +1289,7 @@ function openDrawer(name) {
 
   if (name === 'history') renderHistoryList();
   if (name === 'keypoints') renderKeypointsList();
+  if (name === 'profile') renderProfile();
 }
 
 function closeDrawer() {
@@ -1313,6 +1485,58 @@ async function extractKeypoints() {
   }
 }
 
+async function updateProfile() {
+  const autoProfile = await getSetting('auto_profile');
+  if (autoProfile === 'off') return;
+  if (currentMessages.length === 0) return;
+
+  const apiKey = await getSetting('api_key');
+  if (!apiKey) return;
+
+  const old = await dbGet('profile', 1);
+  const oldContent = old ? old.content : '';
+
+  const conversationText = currentMessages
+    .map(m => `[${m.role === 'user' ? '用户' : '镜'} ${m.time || ''}] ${m.content}`)
+    .join('\n\n');
+
+  const baseUrl = await getSetting('base_url');
+  const model = await getSetting('model');
+  const url = baseUrl.replace(/\/$/, '') + '/chat/completions';
+
+  const systemPrompt = `你是"镜 Mirror"。请基于【旧画像】和【本次对话】，输出一份更新后的【用户长期画像】。
+
+画像应客观、具体、随时间累积，包含：核心课题、已发生的变化/进展（带日期）、反复出现的模式、重要事件（带日期）、身体信号。
+
+要求：
+- 只写事实和观察，不做诊断标签，不安慰，不粉饰。
+- 保留旧画像里仍有效的，更新过时的部分。
+- 用户明确纠正过的归因，不要再犯。
+- 直接输出画像正文，不要解释、不要标题。`;
+
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `【旧画像】\n${oldContent || '(无)'}\n\n【本次对话】\n${conversationText}` },
+      ],
+      temperature: 0.3,
+      max_tokens: 1024,
+    }),
+  });
+
+  if (!resp.ok) return;
+  const data = await resp.json();
+  const content = data.choices[0].message.content;
+  await dbPut('profile', { id: 1, content: content, updatedAt: new Date().toISOString() });
+}
+
 // ==================== EXPORT ====================
 // 导出历史中的某一天对话
 async function exportHistoryConversation(id) {
@@ -1399,7 +1623,7 @@ function getConversationDates() {
     if (d) dates.add(d);
     else hasUnknown = true;
   }
-  const sorted = Array.from(dates).sort();
+  const sorted = Array.from(dates).sort().reverse();
   if (hasUnknown) sorted.push('unknown');
   return sorted;
 }
@@ -1533,6 +1757,41 @@ async function exportKeypoints() {
   showToast(`已导出 ${filename}`);
 }
 
+async function renderProfile() {
+  const profile = await dbGet('profile', 1);
+  const contentEl = $('#profile-content');
+  const emptyEl = $('#profile-empty');
+  if (!profile || !profile.content) {
+    contentEl.innerHTML = '';
+    emptyEl.style.display = 'block';
+    return;
+  }
+  emptyEl.style.display = 'none';
+  contentEl.textContent = profile.content;
+}
+
+async function exportProfile() {
+  const profile = await dbGet('profile', 1);
+  if (!profile || !profile.content) {
+    showToast('暂无画像可导出', true);
+    return;
+  }
+  let text = '长期画像\n';
+  text += '='.repeat(50) + '\n\n';
+  text += profile.content + '\n\n';
+  if (profile.updatedAt) text += `更新时间：${profile.updatedAt}\n`;
+  text += '由 镜 Mirror 生成\n';
+
+  const filename = `画像_${today()}.txt`;
+
+  if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+    try { await navigator.clipboard.writeText(text); showToast('画像已复制到剪贴板'); return; } catch (e) {}
+  }
+
+  downloadText(filename, text);
+  showToast(`已导出 ${filename}`);
+}
+
 // ==================== EVENT LISTENERS ====================
 btnSend.addEventListener('click', sendMessage);
 btnVoice.addEventListener('click', toggleRecording);
@@ -1553,6 +1812,7 @@ userInput.addEventListener('keydown', (e) => {
 $('#btn-settings').addEventListener('click', () => openDrawer('settings'));
 $('#btn-history').addEventListener('click', () => openDrawer('history'));
 $('#btn-keypoints').addEventListener('click', () => openDrawer('keypoints'));
+$('#btn-profile').addEventListener('click', () => openDrawer('profile'));
 $('#btn-export').addEventListener('click', exportConversation);
 
 // Overlay
@@ -1580,6 +1840,8 @@ $('#btn-clear-data').addEventListener('click', async () => {
   if (confirm('确定要清除所有对话记录和关键点吗？此操作不可恢复。')) {
     await dbClear('conversations');
     await dbClear('keypoints');
+    await dbClear('feedback');
+    await dbClear('profile');
     currentConversationId = null;
     currentMessages = [];
     chatContainer.querySelectorAll('.msg').forEach(m => m.remove());
@@ -1594,6 +1856,7 @@ $('#btn-extract-kp').addEventListener('click', extractKeypoints);
 
 // Export keypoints button
 $('#btn-export-kp').addEventListener('click', exportKeypoints);
+$('#btn-export-profile').addEventListener('click', exportProfile);
 
 // ==================== INIT ====================
 async function init() {
