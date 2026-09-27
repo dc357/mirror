@@ -143,6 +143,32 @@
   .msg.ai .bubble {
     background: var(--bg-ai-msg);
     border: 1px solid transparent;
+    white-space: normal;
+  }
+  .msg.ai .bubble p { margin: 0 0 0.6em; }
+  .msg.ai .bubble p:last-child { margin-bottom: 0; }
+  .msg.ai .bubble h1, .msg.ai .bubble h2, .msg.ai .bubble h3, .msg.ai .bubble h4 {
+    font-weight: 600;
+    color: var(--accent);
+    margin: 0.9em 0 0.4em;
+    line-height: 1.4;
+  }
+  .msg.ai .bubble h1 { font-size: 17px; }
+  .msg.ai .bubble h2 { font-size: 16px; }
+  .msg.ai .bubble h3, .msg.ai .bubble h4 { font-size: 15px; }
+  .msg.ai .bubble ul, .msg.ai .bubble ol {
+    margin: 0.4em 0 0.6em;
+    padding-left: 1.4em;
+  }
+  .msg.ai .bubble li { margin: 0.25em 0; }
+  .msg.ai .bubble strong { font-weight: 600; }
+  .msg.ai .bubble em { font-style: italic; }
+  .msg.ai .bubble code {
+    font-family: var(--font-mono);
+    background: var(--bg-input);
+    padding: 0.1em 0.35em;
+    border-radius: 4px;
+    font-size: 0.9em;
   }
 
   .msg .time {
@@ -656,6 +682,7 @@ const SYSTEM_PROMPT = `【角色设定 - 请先读完再回应】
 6. 用户对"专业者"（心理咨询师、师父这类有专业身份的人）有更高期待是合理的；对方做得不专业时被否定，是合理评判。不要把这泛化成"你对所有人都有期待"或"你有个模式"。
 7. 篇幅硬限：默认单条回复不超过 5 段；除非用户明确追问，不做第二层展开、不重复总结。
 8. 指出问题的边界：可以指出用户的问题，但只针对他这次说的具体行为，不上升成"你是个什么样的人"或"你有个模式"；更不许拿"客观指出"当挡箭牌来掩盖自己没接住。
+9. 不越界出主意：给建议前，先问清对方做这件事的标准、理念是什么；不确定他要什么时先问，不假设、不直接替他定方案。
 
 【时间线】
 - "用户深层背景"只是理解用户的参考，不是他"今天说的话"，不要当成他此刻的发言来引用。
@@ -895,15 +922,83 @@ async function getSetting(key) {
 }
 
 // ==================== CHAT UI ====================
+function inlineMd(s) {
+  return s
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>');
+}
+
+function renderMarkdown(text) {
+  const lines = text.split('\n');
+  let html = '';
+  let listType = null;
+  let para = [];
+
+  const closeList = () => {
+    if (listType === 'ul') html += '</ul>';
+    else if (listType === 'ol') html += '</ol>';
+    listType = null;
+  };
+
+  const flushPara = () => {
+    if (para.length) {
+      html += `<p>${para.map(inlineMd).join('<br>')}</p>`;
+      para = [];
+    }
+  };
+
+  for (const line of lines) {
+    if (line.trim() === '') {
+      closeList();
+      flushPara();
+      continue;
+    }
+
+    const h = line.match(/^(#{1,4})\s+(.*)$/);
+    if (h) {
+      closeList();
+      flushPara();
+      html += `<h${h[1].length}>${inlineMd(h[2])}</h${h[1].length}>`;
+      continue;
+    }
+
+    const ul = line.match(/^\s*[-*]\s+(.*)$/);
+    if (ul) {
+      flushPara();
+      if (listType !== 'ul') { closeList(); html += '<ul>'; listType = 'ul'; }
+      html += `<li>${inlineMd(ul[1])}</li>`;
+      continue;
+    }
+
+    const ol = line.match(/^\s*\d+[.)]\s+(.*)$/);
+    if (ol) {
+      flushPara();
+      if (listType !== 'ol') { closeList(); html += '<ol>'; listType = 'ol'; }
+      html += `<li>${inlineMd(ol[1])}</li>`;
+      continue;
+    }
+
+    para.push(line);
+  }
+
+  closeList();
+  flushPara();
+  return html;
+}
+
 function renderMessage(role, content, time) {
   const div = document.createElement('div');
   div.className = `msg ${role}`;
   const feedbackHtml = role === 'ai'
     ? `<button class="btn-feedback" title="这条没接住">✕ 这条没接住</button>`
     : '';
+  const body = role === 'user'
+    ? escapeHTML(content)
+    : renderMarkdown(escapeHTML(content));
   div.innerHTML = `
     <div class="role">${role === 'user' ? '你' : '镜'}</div>
-    <div class="bubble">${escapeHTML(content)}</div>
+    <div class="bubble">${body}</div>
     <div class="time">${time}</div>
     ${feedbackHtml}
   `;
@@ -963,7 +1058,7 @@ async function callDeepSeek(messages, extraSystem = '') {
       model: model,
       messages: allMessages,
       temperature: 0.7,
-      max_tokens: 2048,
+      max_tokens: 8192,
     }),
   });
 
